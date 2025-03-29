@@ -5,7 +5,8 @@ import jumpSound from './sounds/jump.mp3';
 import coinSound from './sounds/coin.mp3';
 import dashSound from './sounds/dash.mp3';
 import noSound from './sounds/no.mp3';
-import rawrSound from './sounds/rawr.mp3';  // Add this import
+import rawrSound from './sounds/rawr.mp3';
+import nipplejs from 'nipplejs';
 
 class Game {
     private scene: THREE.Scene;
@@ -168,6 +169,11 @@ class Game {
     private isEndScreenVisible: boolean = false;
     private noSoundEffect: HTMLAudioElement | null = null;  // Add this property
     private rawrSoundEffect: HTMLAudioElement | null = null;  // Add this property
+    private joystick: any = null;
+    private joystickContainer: HTMLDivElement | null = null;
+    private isMobile: boolean = false;
+    private touchControls: boolean = false;
+    private joystickDirection: THREE.Vector2 = new THREE.Vector2(0, 0);
 
     constructor() {
         this.scene = new THREE.Scene();
@@ -301,6 +307,11 @@ class Game {
         this.rawrSoundEffect = new Audio(rawrSound);
         this.rawrSoundEffect.volume = 0.5;  // Changed from 1.0 to 0.5 (half volume)
         this.rawrSoundEffect.loop = false;
+
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (this.isMobile) {
+            this.createMobileControls();
+        }
     }
 
     private init(): void {
@@ -1502,6 +1513,17 @@ class Game {
             if (this.characterBody) {
                 this.characterBody.rotation.x = 0;
             }
+        }
+
+        // Add joystick movement
+        if (this.isMobile && this.joystickDirection.length() > 0) {
+            const moveDirection = new THREE.Vector3(
+                this.joystickDirection.x,
+                0,
+                this.joystickDirection.y
+            );
+            moveDirection.applyEuler(new THREE.Euler(0, this.playerRotation.y, 0));
+            this.player.position.add(moveDirection.multiplyScalar(this.moveSpeed));
         }
     }
 
@@ -2962,6 +2984,102 @@ class Game {
         
         // Reset fire wall
         this.createFireWall();
+    }
+
+    private createMobileControls(): void {
+        // Create container for joystick
+        this.joystickContainer = document.createElement('div');
+        this.joystickContainer.style.position = 'fixed';
+        this.joystickContainer.style.bottom = '20px';
+        this.joystickContainer.style.left = '20px';
+        this.joystickContainer.style.width = '150px';
+        this.joystickContainer.style.height = '150px';
+        this.joystickContainer.style.zIndex = '1000';
+        document.body.appendChild(this.joystickContainer);
+
+        // Create joystick
+        this.joystick = nipplejs.create({
+            zone: this.joystickContainer,
+            mode: 'static',
+            position: { left: '50%', top: '50%' },
+            color: 'white',
+            size: 120
+        });
+
+        // Handle joystick events
+        this.joystick.on('move', (evt: any) => {
+            const force = evt.force;
+            const angle = evt.angle.radian;
+            this.joystickDirection.x = Math.cos(angle) * force;
+            this.joystickDirection.y = Math.sin(angle) * force;
+        });
+
+        this.joystick.on('end', () => {
+            this.joystickDirection.set(0, 0);
+        });
+
+        // Add jump button
+        const jumpButton = document.createElement('button');
+        jumpButton.style.position = 'fixed';
+        jumpButton.style.bottom = '20px';
+        jumpButton.style.right = '20px';
+        jumpButton.style.width = '80px';
+        jumpButton.style.height = '80px';
+        jumpButton.style.borderRadius = '50%';
+        jumpButton.style.border = 'none';
+        jumpButton.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+        jumpButton.style.color = 'white';
+        jumpButton.style.fontSize = '24px';
+        jumpButton.style.zIndex = '1000';
+        jumpButton.innerHTML = '↑';
+        jumpButton.addEventListener('touchstart', () => {
+            if (this.isGrounded) {
+                this.velocity.y = this.jumpForce;
+                this.isGrounded = false;
+                this.playJumpSound();
+            }
+        });
+        document.body.appendChild(jumpButton);
+
+        // Add dash button
+        const dashButton = document.createElement('button');
+        dashButton.style.position = 'fixed';
+        dashButton.style.bottom = '120px';
+        dashButton.style.right = '20px';
+        dashButton.style.width = '80px';
+        dashButton.style.height = '80px';
+        dashButton.style.borderRadius = '50%';
+        dashButton.style.border = 'none';
+        dashButton.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+        dashButton.style.color = 'white';
+        dashButton.style.fontSize = '24px';
+        dashButton.style.zIndex = '1000';
+        dashButton.innerHTML = '⚡';
+        dashButton.addEventListener('touchstart', () => {
+            if (this.ninjaDashCounter > 0) {
+                this.isNinjaDashing = true;
+                this.ninjaDashStartTime = performance.now();
+                this.ninjaDashCounter = 0;
+                this.updateNinjaDashCounter();
+                this.createNinjaDashEffect();
+                if (this.dashSoundEffect) {
+                    this.dashSoundEffect.currentTime = 0;
+                    this.dashSoundEffect.play().catch(error => {
+                        console.log('Dash sound playback failed:', error);
+                    });
+                }
+            }
+        });
+        document.body.appendChild(dashButton);
+    }
+
+    private playJumpSound(): void {
+        if (this.jumpSoundEffect) {
+            this.jumpSoundEffect.currentTime = 0;
+            this.jumpSoundEffect.play().catch(error => {
+                console.log('Jump sound playback failed:', error);
+            });
+        }
     }
 }
 
