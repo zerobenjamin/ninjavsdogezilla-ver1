@@ -1,0 +1,22 @@
+{
+  "name": "ninjavsdogezilla",
+  "version": "1.0.0",
+  "description": "Ninja vs Dogezilla Game",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "webpack serve --host 0.0.0.0 --port 8080",
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development --host 0.0.0.0 --port 8080"
+  },
+  "dependencies": {
+    "nipplejs": "^0.10.1",
+    "phaser": "^3.70.0"
+  },
+  "devDependencies": {
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.90.3",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.2"
+  }
+} 
