@@ -13,6 +13,13 @@ module.exports = {
         use: 'ts-loader',
         exclude: /node_modules/,
       },
+      {
+        test: /\.(mp3|wav|ogg)$/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'sounds/[name][ext]'
+        }
+      }
     ],
   },
   resolve: {

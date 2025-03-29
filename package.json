@@ -9,8 +9,10 @@
     "dev": "webpack serve --mode development --host 0.0.0.0 --port 3000"
   },
   "dependencies": {
+    "@types/three": "^0.175.0",
     "nipplejs": "^0.10.1",
-    "phaser": "^3.70.0"
+    "phaser": "^3.70.0",
+    "three": "^0.175.0"
   },
   "devDependencies": {
     "ts-loader": "^9.5.1",
@@ -19,4 +21,4 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.0.2"
   }
-} 
+}
