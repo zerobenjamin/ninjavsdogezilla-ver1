@@ -42,7 +42,6 @@ class Game {
     private idleAnimation: THREE.AnimationAction | null;
     private jumpStartAnimation: THREE.AnimationAction | null;
     private jumpLandAnimation: THREE.AnimationAction | null;
-    private isMonsterFrozen: boolean = false;
     private groundLevel: number;
     private backgroundMusic: HTMLAudioElement | null = null;
     private isMusicPlaying: boolean = false;
@@ -1111,12 +1110,6 @@ class Game {
             this.realignOrientation();
             console.log('Character realigned to camera direction'); // Debug message
         }
-        
-        // Add monster freeze toggle
-        if (event.key.toLowerCase() === 'p') {
-            this.isMonsterFrozen = !this.isMonsterFrozen;  // Toggle freeze state
-            console.log(`Monster ${this.isMonsterFrozen ? 'frozen' : 'unfrozen'}`);  // Debug message
-        }
 
         // Add zoom toggle for 'i' key
         if (event.key.toLowerCase() === 'i') {
@@ -1563,7 +1556,7 @@ class Game {
     }
 
     private updateDogezilla(): void {
-        if (this.isMonsterFrozen || !this.dogeHead) return;
+        if (!this.dogeHead) return;
 
         const currentTime = performance.now();
         
