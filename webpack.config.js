@@ -33,6 +33,9 @@ module.exports = {
     host: '0.0.0.0',
     devMiddleware: {
       writeToDisk: false
+    },
+    client: {
+      overlay: false
     }
   },
 }; 
