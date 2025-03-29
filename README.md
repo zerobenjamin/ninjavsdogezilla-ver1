@@ -6,15 +6,16 @@ Survive for as long as possible!
 ## Controls
 - WASD / Arrow Keys: Move character
 - Space: Jump
+- E: Dash
 - R or O: Toggle front view
+- M: Toggle music
 - I: Toggle zoom camera
 - Y: Realign character
-- P: Freeze monster
 
 ## Features
 - Mega Man inspired character design
 - Dynamic camera controls
-- Wall jumping mechanics
+- Wall jumping to charge dash mechanics
 - Sunset atmosphere with ruins
 - Particle effects
 
