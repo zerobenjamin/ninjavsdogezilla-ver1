@@ -1184,13 +1184,23 @@ class Game {
     }
 
     private lockPointer(): void {
+        // Don't lock pointer on mobile devices
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            return;
+        }
+        
         const gameContainer = document.getElementById('game-container');
-        if (gameContainer) {
+        if (gameContainer && gameContainer.requestPointerLock) {
             gameContainer.requestPointerLock();
         }
     }
 
     private handleMouseMove(event: MouseEvent): void {
+        // Don't handle mouse movement on mobile devices
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            return;
+        }
+        
         if (document.pointerLockElement) {
             this.mouseX = event.movementX * this.mouseSensitivity;
             this.mouseY = event.movementY * this.mouseSensitivity;
