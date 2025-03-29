@@ -2888,12 +2888,26 @@ class Game {
         this.endScreenElement.style.transition = 'opacity 0.5s ease-in-out';
         this.endScreenElement.style.pointerEvents = 'none';
         
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const restartText = isMobile ? 'Tap screen to play again' : 'Press space to play again';
+        const controlsText = isMobile ? 
+            'Use joystick to move<br>↑ to jump, ⚡ to dash<br>Wall Jump charges dash, Pick up coins to upgrade your speed' :
+            'WASD to move, Space to jump, Mouse to move camera<br>Wall Jump charges dash, Pick up coins to upgrade your speed';
+        
         this.endScreenElement.innerHTML = `
             <div class="game-over-text" style="color: #ff0000; font-size: 72px; font-weight: bold; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); position: relative; z-index: 100000; display: block; opacity: 1; font-family: Arial, sans-serif;">YOU GOT REKTT</div>
             <div class="final-score" style="color: #ffffff; font-size: 36px; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); position: relative; z-index: 100000; display: block; opacity: 1; font-family: Arial, sans-serif;">Final Score: <span id="final-score-value">0</span></div>
-            <div class="instructions" style="color: #ffffff; font-size: 24px; margin-bottom: 50px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); position: relative; z-index: 100000; display: block; opacity: 1; text-align: center; line-height: 1.5; font-family: Arial, sans-serif;">Survive against Dogezilla for as long as possible!!<br>WASD to move, Space to jump, Mouse to move camera,<br>Wall Jump charges dash, Pick up coins to upgrade your speed</div>
-            <div class="restart-text" style="color: #ffd700; font-size: 32px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); position: relative; z-index: 100000; display: block; opacity: 1; font-family: Arial, sans-serif;">Press space to play again</div>
+            <div class="instructions" style="color: #ffffff; font-size: 24px; margin-bottom: 50px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); position: relative; z-index: 100000; display: block; opacity: 1; text-align: center; line-height: 1.5; font-family: Arial, sans-serif;">Survive against Dogezilla for as long as possible!!<br>${controlsText}</div>
+            <div class="restart-text" style="color: #ffd700; font-size: 32px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); position: relative; z-index: 100000; display: block; opacity: 1; font-family: Arial, sans-serif;">${restartText}</div>
         `;
+        
+        // Add touch event listener for mobile
+        this.endScreenElement.addEventListener('touchstart', (e) => {
+            if (this.isEndScreenVisible) {
+                e.preventDefault(); // Prevent double-firing on some devices
+                this.restartGame();
+            }
+        });
         
         // Add to body to ensure it's on top of everything
         document.body.appendChild(this.endScreenElement);
@@ -3007,11 +3021,13 @@ class Game {
         });
 
         // Handle joystick events
-        this.joystick.on('move', (evt: any) => {
-            const force = evt.force;
-            const angle = evt.angle.radian;
-            this.joystickDirection.x = Math.cos(angle) * force;
-            this.joystickDirection.y = Math.sin(angle) * force;
+        this.joystick.on('move', (evt: any, data: any) => {
+            if (data && data.force && data.angle && data.angle.radian) {
+                const force = Math.min(data.force / 50, 1); // Normalize force
+                const angle = data.angle.radian;
+                this.joystickDirection.x = Math.cos(angle) * force;
+                this.joystickDirection.y = Math.sin(angle) * force;
+            }
         });
 
         this.joystick.on('end', () => {
@@ -3036,7 +3052,12 @@ class Game {
             if (this.isGrounded) {
                 this.velocity.y = this.jumpForce;
                 this.isGrounded = false;
-                this.playJumpSound();
+                if (this.jumpSoundEffect) {
+                    this.jumpSoundEffect.currentTime = 0;
+                    this.jumpSoundEffect.play().catch(error => {
+                        console.log('Jump sound playback failed:', error);
+                    });
+                }
             }
         });
         document.body.appendChild(jumpButton);
