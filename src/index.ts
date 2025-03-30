@@ -173,7 +173,6 @@ class Game {
     private isMobile: boolean = false;
     private touchControls: boolean = false;
     private joystickDirection: THREE.Vector2 = new THREE.Vector2(0, 0);
-    private lastFrameTime: number = 0;
 
     constructor() {
         this.scene = new THREE.Scene();
@@ -1975,36 +1974,26 @@ class Game {
     }
 
     private animate(): void {
-        // Add frame rate limiting
-        const targetFPS = 60;
-        const frameInterval = 1000 / targetFPS;
-        const currentTime = performance.now();
-        
         if (!this.isGameOver) {
-            // Only update game state if enough time has passed
-            if (currentTime - (this.lastFrameTime || 0) >= frameInterval) {
-                this.updatePlayerMovement();
-                this.updateCamera();
-                this.updateDogeSpeed();
-                this.updateDogezilla();
-                this.updateParticles();
-                this.updateDashParticles();
-                this.updateFireParticles();
-                this.updateScore();
-                this.updateLevel();
-                this.updateCoins();
-                
-                if (this.checkCollision()) {
-                    this.gameOver();
-                    return;
-                }
-                
-                if (this.checkFireCollision()) {
-                    this.gameOver();
-                    return;
-                }
-                
-                this.lastFrameTime = currentTime;
+            this.updatePlayerMovement();
+            this.updateCamera();
+            this.updateDogeSpeed();
+            this.updateDogezilla();
+            this.updateParticles();
+            this.updateDashParticles();
+            this.updateFireParticles();
+            this.updateScore();
+            this.updateLevel();
+            this.updateCoins();
+            
+            if (this.checkCollision()) {
+                this.gameOver();
+                return;
+            }
+            
+            if (this.checkFireCollision()) {
+                this.gameOver();
+                return;
             }
         }
         
