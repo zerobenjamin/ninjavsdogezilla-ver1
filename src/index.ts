@@ -213,6 +213,13 @@ class Game {
         this.originalCameraPosition = new THREE.Vector3(0, 10, -20);
         this.originalCameraTarget = new THREE.Vector3(0, 0, 0);
 
+        // Check for mobile device
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (this.isMobile) {
+            this.createMobileOverlay();
+            return; // Stop initialization if on mobile
+        }
+
         // Adjust jump values
         this.gravity = 0.015;
         this.jumpForce = 0.4;      // Increased to 0.4
@@ -3086,6 +3093,37 @@ class Game {
                 console.log('Jump sound playback failed:', error);
             });
         }
+    }
+
+    private createMobileOverlay(): void {
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+        overlay.style.display = 'flex';
+        overlay.style.flexDirection = 'column';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '99999';
+        overlay.style.color = 'white';
+        overlay.style.fontFamily = 'Arial, sans-serif';
+        overlay.style.textAlign = 'center';
+        overlay.style.margin = '0';
+        overlay.style.padding = '0';
+
+        const message = document.createElement('div');
+        message.style.fontSize = '24px';
+        message.style.lineHeight = '1.5';
+        message.style.maxWidth = '80%';
+        message.style.margin = '0 auto';
+        message.style.padding = '0 20px';
+        message.textContent = 'Sorry. Ninja vs. Dogezilla is not available on mobile. Try it on your computer!';
+        overlay.appendChild(message);
+
+        document.body.appendChild(overlay);
     }
 }
 
