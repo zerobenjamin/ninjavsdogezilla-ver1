@@ -2884,7 +2884,7 @@ class Game {
         const restartText = isMobile ? 'Tap screen to play again' : 'Press space to play again';
         const controlsText = isMobile ? 
             'Use joystick to move<br>↑ to jump, ⚡ to dash<br>Wall Jump charges dash, Pick up coins to upgrade your speed' :
-            'WASD to move, Space to jump, Mouse to move camera<br>Wall Jump charges dash, Pick up coins to upgrade your speed';
+            'WASD to move, Space to jump, Mouse to move camera<br>Wall Jump charges dash (E to dash), Pick up coins to upgrade your speed';
         
         this.endScreenElement.innerHTML = `
             <div class="game-over-text" style="color: #ff0000; font-size: 72px; font-weight: bold; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); position: relative; z-index: 100000; display: block; opacity: 1; font-family: Arial, sans-serif;">YOU GOT REKTT</div>
