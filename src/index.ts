@@ -162,13 +162,14 @@ class Game {
     private speedBoostEndTime: number = 0;
     private readonly SPEED_BOOST_DURATION: number = 300; // 0.3 seconds in milliseconds
     private readonly SPEED_BOOST_MULTIPLIER: number = 2.0; // 2x speed boost
+    private readonly PHYSICS_SPEED_MULTIPLIER: number = 65; // Global physics speed multiplier
     private goldAuraParticles: THREE.Points[] = []; // Array to store particle systems
     private goldAuraLifetimes: number[] = []; // Array to store particle lifetimes
     private endScreenElement: HTMLDivElement | null = null;
     private isEndScreenVisible: boolean = false;
     private noSoundEffect: HTMLAudioElement | null = null;  // Add this property
     private rawrSoundEffect: HTMLAudioElement | null = null;  // Add this property
-    private joystick: any = null;
+    private joystick: any = null; 
     private joystickContainer: HTMLDivElement | null = null;
     private isMobile: boolean = false;
     private touchControls: boolean = false;
@@ -1010,7 +1011,7 @@ class Game {
             
             // Get pillar's actual height from geometry
             const pillarHeight = pillar.geometry.parameters.height;
-            const pillarRadius = 2.5; // Match the radius used in createBuildings
+            const pillarRadius = 3; // Increased from 2.5 to 3 to make hitbox wider
             const capitalHeight = 2; // Height of the capital (curved top part)
 
             // Calculate distance from player to pillar center
@@ -1226,16 +1227,17 @@ class Game {
         this.player.rotation.y = this.playerRotation.y;
     }
 
-    private updatePlayerMovement(): void {
+    private updatePlayerMovement(deltaTime: number): void {
         if (this.isGameOver) return;
 
         const currentTime = performance.now();
+        const scaledDeltaTime = deltaTime * this.PHYSICS_SPEED_MULTIPLIER;
 
         // Check if speed boost has expired
         if (this.isSpeedBoosted && currentTime >= this.speedBoostEndTime) {
             this.isSpeedBoosted = false;
             this.moveSpeed = this.basePlayerSpeed * (1 + (this.speedLevel - 1) * 0.15);
-            this.removeGoldAuraGlow(); // Add this line
+            this.removeGoldAuraGlow();
         }
 
         // Update gold aura glow if active
@@ -1245,11 +1247,10 @@ class Game {
 
         // Update dash state
         if (this.isNinjaDashing && this.ninjaDashStartTime) {
-            const dashElapsed = performance.now() - this.ninjaDashStartTime;
+            const dashElapsed = currentTime - this.ninjaDashStartTime;
             
             if (dashElapsed < this.ninjaDashDuration) {
                 // During dash
-                // Get the direction the player is facing
                 const direction = new THREE.Vector3(0, 0, 1);
                 direction.applyEuler(new THREE.Euler(0, this.player.rotation.y, 0));
                 
@@ -1259,10 +1260,10 @@ class Game {
                     this.characterBody.rotation.x = dashLeanAngle;
                 }
                 
-                // Calculate next position with dash movement
+                // Calculate next position with dash movement (scaled by delta time)
                 const nextPosition = this.player.position.clone();
-                nextPosition.x += direction.x * this.ninjaDashSpeed;
-                nextPosition.z += direction.z * this.ninjaDashSpeed;
+                nextPosition.x += direction.x * this.ninjaDashSpeed * scaledDeltaTime;
+                nextPosition.z += direction.z * this.ninjaDashSpeed * scaledDeltaTime;
                 
                 // Check collision before applying movement
                 const collision = this.checkBuildingCollision(nextPosition);
@@ -1279,11 +1280,9 @@ class Game {
                 // Create particles during dash
                 this.createNinjaDashEffect();
                 this.isDashingOrAfterglowing = true;
-                
             } else if (dashElapsed < this.ninjaDashDuration + this.dashAfterglowDuration) {
                 // During afterglow
                 if (this.characterBody) {
-                    // Gradually return to upright position
                     const afterglowProgress = (dashElapsed - this.ninjaDashDuration) / this.dashAfterglowDuration;
                     const dashLeanAngle = (Math.PI / 4) * (1 - afterglowProgress);
                     this.characterBody.rotation.x = dashLeanAngle;
@@ -1304,7 +1303,7 @@ class Game {
             }
         }
 
-        const moveDistance = this.moveSpeed;
+        const moveDistance = this.moveSpeed * scaledDeltaTime;
         const playerDirection = new THREE.Vector3();
 
         // Always calculate fresh camera-relative directions
@@ -1324,19 +1323,19 @@ class Game {
         }
         if (this.keys['a'] || this.keys['arrowleft']) {
             playerDirection.add(cameraRight);
-            this.player.rotation.y = this.playerRotation.y + Math.PI / 2; // Flipped rotation for A
+            this.player.rotation.y = this.playerRotation.y + Math.PI / 2;
         }
         if (this.keys['d'] || this.keys['arrowright']) {
             playerDirection.sub(cameraRight);
-            this.player.rotation.y = this.playerRotation.y - Math.PI / 2; // Flipped rotation for D
+            this.player.rotation.y = this.playerRotation.y - Math.PI / 2;
         }
 
         // If not strafing (A/D), face the movement direction or forward
         if (!this.keys['a'] && !this.keys['d']) {
             if (this.keys['s']) {
-                this.player.rotation.y = this.playerRotation.y + Math.PI; // Face backward when moving backward
+                this.player.rotation.y = this.playerRotation.y + Math.PI;
             } else {
-                this.player.rotation.y = this.playerRotation.y; // Face forward
+                this.player.rotation.y = this.playerRotation.y;
             }
         }
 
@@ -1362,7 +1361,7 @@ class Game {
                 if (horizontalCollision.collision) {
                     this.player.position.y = horizontalCollision.surfaceY;
                     this.isGrounded = true;
-                    this.velocity.y = 0; // Reset vertical velocity when landing
+                    this.velocity.y = 0;
                     
                     // Reset any accumulated movement state when landing
                     this.player.rotation.x = 0;
@@ -1377,14 +1376,14 @@ class Game {
             }
         }
 
-        // Apply gravity
+        // Apply gravity (scaled by delta time)
         if (!this.isGrounded) {
-            this.velocity.y -= this.gravity;
+            this.velocity.y -= this.gravity * scaledDeltaTime;
         }
 
-        // Vertical movement
+        // Vertical movement (scaled by delta time)
         const verticalPosition = this.player.position.clone();
-        verticalPosition.y += this.velocity.y;
+        verticalPosition.y += this.velocity.y * scaledDeltaTime;
         
         const verticalCollision = this.checkBuildingCollision(verticalPosition);
         if (!verticalCollision.collision) {
@@ -1424,7 +1423,6 @@ class Game {
 
         // Update animations
         if (this.animationMixer && this.characterModel) {
-            const deltaTime = this.clock.getDelta();
             this.animationMixer.update(deltaTime);
 
             if (!this.isGrounded) {
@@ -1446,8 +1444,7 @@ class Game {
         // Animate legs while running on ground and handle directional lean
         if (this.isGrounded && (this.keys['w'] || this.keys['a'] || this.keys['s'] || this.keys['d'])) {
             const runSpeed = 14;
-            const time = performance.now() * 0.001;
-            // Increased leg swing amplitude by 20% (from 0.4 to 0.48)
+            const time = currentTime * 0.001;
             const legRotation = Math.sin(time * runSpeed) * 0.48;
 
             // Alternate legs
@@ -1462,18 +1459,15 @@ class Game {
 
             // Handle forward/backward lean
             if (this.keys['w'] || this.keys['s']) {
-                // Forward lean in the direction of movement
-                const forwardLean = Math.PI / 9; // 20 degrees
+                const forwardLean = Math.PI / 9;
                 this.player.rotateOnAxis(new THREE.Vector3(1, 0, 0), this.keys['s'] ? -forwardLean : forwardLean);
             }
 
             // Handle sideways lean for strafing
             if (this.keys['a'] || this.keys['d']) {
-                // Sideways lean in the direction of movement
-                const sideLean = Math.PI / 12; // 15 degrees (slightly less than forward lean)
+                const sideLean = Math.PI / 12;
                 this.player.rotateOnAxis(new THREE.Vector3(0, 0, 1), this.keys['a'] ? sideLean : -sideLean);
             }
-
         } else {
             // Reset legs and body rotation when not running or in air
             if (this.playerParts.leftLeg && this.playerParts.rightLeg) {
@@ -1487,8 +1481,8 @@ class Game {
 
         // After velocity and position updates, add this aerial animation
         if (!this.isGrounded) {
-            const jumpLeanAngle = Math.PI / 5.14; // ~35 degrees forward lean
-            const maxBackwardLean = -Math.PI / 36; // Maximum 5 degrees backward lean (changed from PI/12)
+            const jumpLeanAngle = Math.PI / 5.14;
+            const maxBackwardLean = -Math.PI / 36;
             
             if (this.characterBody && !this.canWallJump) {
                 // Smoothly transition to forward lean
@@ -1518,7 +1512,7 @@ class Game {
             }
         }
 
-        // Add joystick movement
+        // Add joystick movement (scaled by delta time)
         if (this.isMobile && this.joystickDirection.length() > 0) {
             const moveDirection = new THREE.Vector3(
                 this.joystickDirection.x,
@@ -1526,7 +1520,7 @@ class Game {
                 this.joystickDirection.y
             );
             moveDirection.applyEuler(new THREE.Euler(0, this.playerRotation.y, 0));
-            this.player.position.add(moveDirection.multiplyScalar(this.moveSpeed));
+            this.player.position.add(moveDirection.multiplyScalar(this.moveSpeed * scaledDeltaTime));
         }
     }
 
@@ -1555,15 +1549,16 @@ class Game {
         this.camera.lookAt(this.player.position);
     }
 
-    private updateDogezilla(): void {
+    private updateDogezilla(deltaTime: number): void {
         if (!this.dogeHead) return;
 
         const currentTime = performance.now();
+        const scaledDeltaTime = deltaTime * this.PHYSICS_SPEED_MULTIPLIER;
         
         // Handle dash end
         if (this.dogeMovementState === 'dash' && currentTime - (this.dogeDashStartTime || currentTime) > this.dogeDashDuration) {
             this.dogeMovementState = 'normal';
-            this.currentSpeed = this.baseSpeed * this.dogeSpeedMultiplier;  // Apply multiplier
+            this.currentSpeed = this.baseSpeed * this.dogeSpeedMultiplier;
             this.lastSpeedChange = currentTime;
         }
         // State changes
@@ -1578,17 +1573,17 @@ class Game {
                     
                     this.dogeMovementState = 'dash';
                     this.currentSpeed = Math.min(
-                        this.baseSpeed * this.maxSpeedMultiplier * this.dogeSpeedMultiplier,  // Apply multiplier
-                        this.baseSpeed * 2.5 * this.dogeSpeedMultiplier  // Apply multiplier
+                        this.baseSpeed * this.maxSpeedMultiplier * this.dogeSpeedMultiplier,
+                        this.baseSpeed * 2.5 * this.dogeSpeedMultiplier
                     );
                     this.dogeDashStartTime = currentTime;
                 }
             } else if (rand < 0.5) {  // 20% chance to move slowly
                 this.dogeMovementState = 'slow';
-                this.currentSpeed = this.baseSpeed * 0.6 * this.dogeSpeedMultiplier;  // Apply multiplier
+                this.currentSpeed = this.baseSpeed * 0.6 * this.dogeSpeedMultiplier;
             } else {  // 50% chance to move at normal speed
                 this.dogeMovementState = 'normal';
-                this.currentSpeed = this.baseSpeed * this.dogeSpeedMultiplier;  // Apply multiplier
+                this.currentSpeed = this.baseSpeed * this.dogeSpeedMultiplier;
             }
             
             this.lastSpeedChange = currentTime;
@@ -1600,51 +1595,42 @@ class Game {
 
             switch (this.headState) {
                 case 'turning':
-                    // Faster turn to target rotation (doubled from 0.05 to 0.1)
                     const quickTurnSpeed = 0.1;
                     this.targetRotation = this.headRotationDirection * this.maxHeadRotation;
                     this.currentHeadSpeed = quickTurnSpeed;
                     
-                    // Check if we've reached the target
                     if (Math.abs(this.headRotation - this.targetRotation) < 0.01) {
                         this.headState = 'pausing';
                         this.lastStateChange = currentTime;
-                        this.pauseDuration = 1000 + Math.random() * 1000; // 1-2 seconds pause
+                        this.pauseDuration = 1000 + Math.random() * 1000;
                     }
                     break;
 
                 case 'pausing':
-                    // Stay still for a moment
                     if (currentTime - this.lastStateChange > this.pauseDuration) {
                         this.headState = 'returning';
                         this.lastStateChange = currentTime;
-                        this.currentHeadSpeed = 0.008; // Slower initial return speed
+                        this.currentHeadSpeed = 0.008;
                     }
                     break;
 
                 case 'returning':
-                    // Smoothly return to center
                     this.targetRotation = 0;
-                    
-                    // More gradual speed increase for smoother return
                     this.currentHeadSpeed = Math.min(0.015, this.currentHeadSpeed + 0.00005);
                     
-                    // Smoother transition near center
                     if (Math.abs(this.headRotation) < 0.1) {
-                        this.currentHeadSpeed *= 0.95; // Gradually slow down near center
+                        this.currentHeadSpeed *= 0.95;
                     }
                     
-                    // Check if we're back at center with a smaller threshold
                     if (Math.abs(this.headRotation) < 0.001) {
                         this.headRotation = 0;
                         this.headState = 'turning';
                         this.lastStateChange = currentTime;
-                        this.headRotationDirection *= -1; // Switch direction for next turn
+                        this.headRotationDirection *= -1;
                     }
                     break;
             }
 
-            // Smoother rotation update with easing
             const targetDiff = this.targetRotation - this.headRotation;
             if (Math.abs(targetDiff) > 0.001) {
                 const ease = this.headState === 'returning' ? 0.95 : 1.0;
@@ -1652,11 +1638,9 @@ class Game {
                     Math.min(Math.abs(targetDiff), this.currentHeadSpeed) * ease;
             }
 
-            // Apply the rotation
             this.dogeHead.rotation.y = this.headRotation;
         } else {
-            // Smoother reset when dashing
-            this.headRotation *= 0.9; // Gradual return to center
+            this.headRotation *= 0.9;
             this.dogeHead.rotation.y = this.headRotation;
             if (Math.abs(this.headRotation) < 0.001) {
                 this.headRotation = 0;
@@ -1669,22 +1653,19 @@ class Game {
         const legs = this.dogezilla.children.filter(child => 
             child instanceof THREE.Mesh && 
             child.geometry instanceof THREE.CylinderGeometry &&
-            child !== this.dogezilla.children[0] // Exclude the body cylinder
+            child !== this.dogezilla.children[0]
         );
 
-        // Calculate animation speed based on current movement speed
-        this.dogeLegSpeed = this.currentSpeed * 2; // Adjust multiplier as needed
-        this.dogeLegRotation += this.dogeLegSpeed;
+        // Calculate animation speed based on current movement speed (scaled by delta time)
+        this.dogeLegSpeed = this.currentSpeed * 2;
+        this.dogeLegRotation += this.dogeLegSpeed * scaledDeltaTime;
 
         // Animate each leg
         legs.forEach((leg, index) => {
             if (leg instanceof THREE.Mesh) {
-                // Front legs (index 0 and 1)
                 if (index < 2) {
                     leg.rotation.x = Math.sin(this.dogeLegRotation + (index * Math.PI)) * 0.4;
-                }
-                // Back legs (index 2 and 3)
-                else {
+                } else {
                     leg.rotation.x = Math.sin(this.dogeLegRotation + ((index - 2) * Math.PI)) * 0.4;
                 }
             }
@@ -1695,9 +1676,9 @@ class Game {
             .subVectors(this.player.position, this.dogezilla.position)
             .normalize();
         
-        // Move directly towards player (no obstacle checking)
+        // Move directly towards player (scaled by delta time)
         const nextPosition = this.dogezilla.position.clone();
-        nextPosition.add(direction.multiplyScalar(this.currentSpeed));
+        nextPosition.add(direction.multiplyScalar(this.currentSpeed * scaledDeltaTime));
 
         // Only check ground collision
         const groundRaycaster = new THREE.Raycaster();
@@ -1712,7 +1693,7 @@ class Game {
 
         if (ground) {
             const groundIntersects = groundRaycaster.intersectObject(ground);
-            const minHeight = 3; // Minimum height above ground
+            const minHeight = 3;
 
             if (groundIntersects.length > 0) {
                 const groundHeight = groundIntersects[0].point.y;
@@ -1725,7 +1706,7 @@ class Game {
         // Apply the new position
         this.dogezilla.position.copy(nextPosition);
 
-        // Body rotation (existing code)
+        // Body rotation (scaled by delta time)
         const targetRotation = Math.atan2(direction.x, direction.z);
         const currentRotation = this.dogezilla.rotation.y;
         
@@ -1737,7 +1718,7 @@ class Game {
                              this.dogeMovementState === 'slow' ? 0.05 : 0.1;
         
         this.dogezilla.rotation.y += Math.min(
-            rotationSpeed,
+            rotationSpeed * scaledDeltaTime,
             Math.abs(angleDiff)
         ) * Math.sign(angleDiff);
     }
@@ -1975,10 +1956,11 @@ class Game {
 
     private animate(): void {
         if (!this.isGameOver) {
-            this.updatePlayerMovement();
+            const deltaTime = this.clock.getDelta();
+            this.updatePlayerMovement(deltaTime);
             this.updateCamera();
             this.updateDogeSpeed();
-            this.updateDogezilla();
+            this.updateDogezilla(deltaTime);
             this.updateParticles();
             this.updateDashParticles();
             this.updateFireParticles();
