@@ -174,6 +174,8 @@ class Game {
     private isMobile: boolean = false;
     private touchControls: boolean = false;
     private joystickDirection: THREE.Vector2 = new THREE.Vector2(0, 0);
+    private originalMaterialProperties: { transparent: boolean; opacity: number }[] = []; // Store original material properties
+    private isDogezillaTransparent: boolean = false; // Track transparency state
 
     constructor() {
         this.scene = new THREE.Scene();
@@ -876,6 +878,29 @@ class Game {
 
         this.dogezilla = dogezilla;
         this.scene.add(this.dogezilla);
+
+        // Store original material properties
+        this.dogezilla.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                materials.forEach(material => {
+                    // Store original properties
+                    this.originalMaterialProperties.push({
+                        transparent: material.transparent,
+                        opacity: material.opacity
+                    });
+                    
+                    // Ensure materials can be transparent
+                    material.transparent = true;
+                    material.depthWrite = true;
+                    
+                    // Ensure all materials can be transparent, including white materials
+                    if (material.color) {
+                        material.color.setHex(material.color.getHex());
+                    }
+                });
+            }
+        });
     }
 
     private createRuins(): void {
@@ -1867,6 +1892,9 @@ class Game {
         this.isGameOver = true;
         this.endScreenStartTime = performance.now();
         
+        // Make Dogezilla fully opaque at the start of end sequence
+        this.makeDogezillaFullyOpaque();
+        
         // Play rawr sound before end animation
         if (this.rawrSoundEffect) {
             console.log('Attempting to play rawr sound...');
@@ -1879,7 +1907,7 @@ class Game {
         } else {
             console.log('Rawr sound effect not initialized');
         }
-
+        
         // Play end animation
         this.playEndAnimation();
     }
@@ -1974,6 +2002,9 @@ class Game {
             this.updateScore();
             this.updateLevel();
             this.updateCoins();
+            
+            // Add camera obstruction check
+            this.checkDogezillaCameraObstruction();
             
             if (this.checkCollision()) {
                 this.gameOver();
@@ -3124,6 +3155,110 @@ class Game {
         overlay.appendChild(message);
 
         document.body.appendChild(overlay);
+    }
+
+    private checkDogezillaCameraObstruction(): void {
+        if (!this.dogezilla) return;
+
+        // Create raycaster and ray
+        const raycaster = new THREE.Raycaster();
+        raycaster.ray.origin.copy(this.camera.position);
+        raycaster.ray.direction.copy(this.player.position).sub(this.camera.position).normalize();
+
+        // Get distance from camera to player
+        const distanceToPlayer = this.camera.position.distanceTo(this.player.position);
+
+        // Check for intersections with Dogezilla
+        const intersects = raycaster.intersectObject(this.dogezilla, true);
+        
+        // If we have intersections and the first one is closer than the player
+        if (intersects.length > 0 && intersects[0].distance < distanceToPlayer - 0.01) {
+            if (!this.isDogezillaTransparent) {
+                this.makeDogezillaSemiTransparent();
+            }
+        } else if (this.isDogezillaTransparent) {
+            this.makeDogezillaFullyOpaque();
+        }
+    }
+
+    private makeDogezillaSemiTransparent(): void {
+        if (!this.dogezilla) return;
+
+        let materialIndex = 0;
+        this.dogezilla.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                materials.forEach(material => {
+                    // Enable transparency
+                    material.transparent = true;
+                    material.depthWrite = false; // Important for proper transparency
+                    material.opacity = 0.2; // Changed from 0.5 to 0.2
+                    
+                    // Force material update
+                    material.needsUpdate = true;
+                    
+                    // Ensure all materials can be transparent, including white materials
+                    if (material.color) {
+                        material.color.setHex(material.color.getHex());
+                    }
+                    
+                    materialIndex++;
+                });
+            }
+        });
+
+        // Force update for specific parts
+        if (this.dogeHead) {
+            this.dogeHead.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    materials.forEach(material => {
+                        material.transparent = true;
+                        material.depthWrite = false;
+                        material.opacity = 0.2;
+                        material.needsUpdate = true;
+                    });
+                }
+            });
+        }
+
+        this.isDogezillaTransparent = true;
+    }
+
+    private makeDogezillaFullyOpaque(): void {
+        if (!this.dogezilla) return;
+
+        let materialIndex = 0;
+        this.dogezilla.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                materials.forEach(material => {
+                    const originalProps = this.originalMaterialProperties[materialIndex];
+                    material.transparent = originalProps.transparent;
+                    material.depthWrite = true;
+                    material.opacity = originalProps.opacity;
+                    material.needsUpdate = true;
+                    materialIndex++;
+                });
+            }
+        });
+
+        // Restore opacity for specific parts
+        if (this.dogeHead) {
+            this.dogeHead.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                    materials.forEach(material => {
+                        material.transparent = false;
+                        material.depthWrite = true;
+                        material.opacity = 1;
+                        material.needsUpdate = true;
+                    });
+                }
+            });
+        }
+
+        this.isDogezillaTransparent = false;
     }
 }
 
